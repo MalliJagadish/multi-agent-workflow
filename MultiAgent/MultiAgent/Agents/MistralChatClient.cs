@@ -5,20 +5,19 @@ using System.Text.Json;
 
 namespace MultiAgent.Agents;
 
-// Google AI Studio IChatClient — FREE tier via OpenAI-compatible endpoint.
-// Model: gemma-3-27b-it — 14,400 req/day, 15K TPM, 30 RPM, 128K context, tool calling
-// Key: aistudio.google.com/apikey  (same key works for Gemini AND Gemma)
-public class GeminiChatClient : IChatClient
+// Mistral La Plateforme IChatClient — FREE tier.
+// 500,000 tokens/min, 1B tokens/month, 60 req/min, 128K context
+// Key: console.mistral.ai  Model: mistral-small-latest
+public class MistralChatClient : IChatClient
 {
     private readonly HttpClient _http;
     private readonly string _model;
-    private const string BaseUrl =
-        "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
+    private const string BaseUrl = "https://api.mistral.ai/v1/chat/completions";
 
     public ChatClientMetadata Metadata =>
-        new("Google", new Uri("https://generativelanguage.googleapis.com"), _model);
+        new("Mistral", new Uri("https://api.mistral.ai"), _model);
 
-    public GeminiChatClient(string apiKey, string model = "gemma-3-27b-it")
+    public MistralChatClient(string apiKey, string model = "mistral-small-latest")
     {
         _model = model;
         _http = new HttpClient();
@@ -53,7 +52,7 @@ public class GeminiChatClient : IChatClient
         var json = await resp.Content.ReadAsStringAsync(ct);
 
         if (!resp.IsSuccessStatusCode)
-            throw new Exception($"Gemini {resp.StatusCode}: {json}");
+            throw new Exception($"Mistral {resp.StatusCode}: {json}");
 
         using var doc = JsonDocument.Parse(json);
         var choice = doc.RootElement.GetProperty("choices")[0];

@@ -5,20 +5,23 @@ using System.Text.Json;
 
 namespace MultiAgent.Agents;
 
-// Google AI Studio IChatClient — FREE tier via OpenAI-compatible endpoint.
-// Model: gemma-3-27b-it — 14,400 req/day, 15K TPM, 30 RPM, 128K context, tool calling
-// Key: aistudio.google.com/apikey  (same key works for Gemini AND Gemma)
-public class GeminiChatClient : IChatClient
+/// <summary>
+/// Cerebras IChatClient adapter — FREE tier.
+/// Models: llama3.1-8b (14,400 req/day, 60,000 tokens/min)
+///         gpt-oss-120b (14,400 req/day, 60,000 tokens/min)
+/// Key: cloud.cerebras.ai
+/// 5x higher token/min limit than Groq — use when Groq rate limits.
+/// </summary>
+public class CerebrasChatClient : IChatClient
 {
     private readonly HttpClient _http;
     private readonly string _model;
-    private const string BaseUrl =
-        "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
+    private const string BaseUrl = "https://api.cerebras.ai/v1/chat/completions";
 
     public ChatClientMetadata Metadata =>
-        new("Google", new Uri("https://generativelanguage.googleapis.com"), _model);
+        new("Cerebras", new Uri("https://api.cerebras.ai"), _model);
 
-    public GeminiChatClient(string apiKey, string model = "gemma-3-27b-it")
+    public CerebrasChatClient(string apiKey, string model = "llama3.3-70b")
     {
         _model = model;
         _http = new HttpClient();
@@ -35,7 +38,7 @@ public class GeminiChatClient : IChatClient
             ? new
             {
                 model = _model,
-                max_tokens = options?.MaxOutputTokens ?? 8192,
+                max_tokens = options?.MaxOutputTokens ?? 16000,
                 messages = ConvertMessages(messages),
                 tools,
                 tool_choice = "auto"
@@ -43,7 +46,7 @@ public class GeminiChatClient : IChatClient
             : new
             {
                 model = _model,
-                max_tokens = options?.MaxOutputTokens ?? 8192,
+                max_tokens = options?.MaxOutputTokens ?? 16000,
                 messages = ConvertMessages(messages)
             };
 
@@ -53,12 +56,13 @@ public class GeminiChatClient : IChatClient
         var json = await resp.Content.ReadAsStringAsync(ct);
 
         if (!resp.IsSuccessStatusCode)
-            throw new Exception($"Gemini {resp.StatusCode}: {json}");
+            throw new Exception($"Cerebras {resp.StatusCode}: {json}");
 
         using var doc = JsonDocument.Parse(json);
         var choice = doc.RootElement.GetProperty("choices")[0];
         var msg = choice.GetProperty("message");
 
+        // Parse tool calls
         if (msg.TryGetProperty("tool_calls", out var tcs) && tcs.GetArrayLength() > 0)
         {
             var contents = new List<AIContent>();

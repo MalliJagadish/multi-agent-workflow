@@ -200,7 +200,7 @@ public class MultiAgentWorkflow
                 "ListFiles", "List staged files.")
         };
 
-        state.GeneratedCode = await RunAgentLoop(state, CreateGroqClient(),
+        state.GeneratedCode = await RunAgentLoop(state, CreateGeminiClient(),
             BuildCoderPrompt(state),
             $"Implement: {state.FeatureDescription}", "CoderAgent", tools, 15);
     }
@@ -223,7 +223,7 @@ public class MultiAgentWorkflow
                 "WriteTestFile", "Write a test file."),
         };
 
-        state.UnitTestResults = await RunAgentLoop(state, CreateGroqClient(),
+        state.UnitTestResults = await RunAgentLoop(state, CreateGeminiClient(),
             BuildUnitTestPrompt(state),
             $"Write NUnit tests for: {state.FeatureDescription}", "UnitTestAgent", tools, 12);
     }
@@ -395,7 +395,7 @@ public class MultiAgentWorkflow
             Do NOT output function calls as XML tags.
             """;
 
-        await RunAgentLoop(state, CreateGroqClient(), prompt,
+        await RunAgentLoop(state, CreateGeminiClient(), prompt,
             "Address all findings.", "CoderAgent", tools, 20);
 
         // Default unresponded findings
@@ -1005,11 +1005,9 @@ public class MultiAgentWorkflow
 
     private IChatClient CreateGeminiClient()
         => new ChatClientBuilder(
-                new ThrottledChatClient(
-                    new GeminiChatClient(
-                        _config["Gemini:ApiKey"] ?? throw new Exception("Missing Gemini:ApiKey"),
-                        model: "gemini-2.0-flash"),
-                    _geminiThrottler))
+                new GeminiChatClient(
+                    _config["Gemini:ApiKey"] ?? throw new Exception("Missing Gemini:ApiKey"),
+                    "gemma-3-27b-it"))
             .UseFunctionInvocation().Build();
 
     private IChatClient CreateGitHubModelsClient()
